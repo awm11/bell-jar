@@ -24,6 +24,7 @@ const SHADE_MAX = 0.36;
 const SLOW_FACTOR = 0.2;
 const MASTER_VOLUME = 0.14;
 const FORK_DECAY = 4.5; // seconds for a struck fork to fade by a factor of e
+const DAMP_TAU = 0.07; // the same, once the fork is gripped to dampen it
 
 const F_MIN = 100;
 const F_MAX = 400;
@@ -287,9 +288,17 @@ export default function SoundWaves({ onBack, disableSound = false }) {
   const prongRefs = useRef([]);
   const markRefs = useRef({});
 
+  const dampRef = useRef(null); // when the fork was last gripped to stop it
+
   const strike = () => {
     strikeRef.current = performance.now();
+    dampRef.current = null;
     setRinging(true);
+  };
+
+  // Grip the tines: the ringing dies away in a fraction of a second
+  const dampen = () => {
+    if (dampRef.current === null) dampRef.current = performance.now();
   };
 
   const chooseSource = (id) => {
@@ -421,7 +430,14 @@ export default function SoundWaves({ onBack, disableSound = false }) {
 
       // --- The source ---
       const fork = sourceRef.current === "fork";
-      const ring = fork ? Math.exp(-(now - strikeRef.current) / 1000 / FORK_DECAY) : 1;
+      // The fork rings down slowly by itself, or within a moment once dampened
+      const damp = dampRef.current;
+      const ring = !fork
+        ? 1
+        : damp === null
+          ? Math.exp(-(now - strikeRef.current) / 1000 / FORK_DECAY)
+          : Math.exp(-(damp - strikeRef.current) / 1000 / FORK_DECAY) *
+            Math.exp(-Math.max(0, now - damp) / 1000 / DAMP_TAU);
       const target = (ampRef.current / 100) * (ring < 0.01 ? 0 : ring);
 
       // Struck: the tines swing at full amplitude straight away, with no
@@ -434,7 +450,9 @@ export default function SoundWaves({ onBack, disableSound = false }) {
         prevAmp = a1;
         struck = a1 > 0;
       } else {
-        ampNow += (target - ampNow) * Math.min(1, dt / 0.12);
+        // follow the dampening closely, so the tines stop as quickly as the sound
+        const rate = fork && damp !== null ? real / 0.02 : dt / 0.12;
+        ampNow += (target - ampNow) * Math.min(1, rate);
       }
       phiNow += ((TWO_PI * freqRef.current) / TIME_SCALE) * dt;
 
@@ -1117,14 +1135,69 @@ export default function SoundWaves({ onBack, disableSound = false }) {
           font-variant-numeric: tabular-nums;
         }
 
-        .strikeBtn {
-          border-color: ${C.blue};
-          color: ${C.blue};
+        /* Fork actions: set apart by a divider, and shaped as buttons rather
+           than as options, so they don't read as a third source */
+        .forkActions {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          margin-left: 10px;
+          padding-left: 18px;
+          border-left: 1px solid #dfe3e8;
         }
 
-        .strikeBtn:disabled {
-          opacity: 0.4;
+        .act {
+          border: 1px solid #c6ccd3;
+          background: #fff;
+          color: ${C.ink};
+          border-radius: 8px;
+          padding: 7px 16px;
+          font: inherit;
+          font-size: 14px;
+          font-weight: 700;
+          cursor: pointer;
+          transition:
+            background 0.15s ease,
+            border-color 0.15s ease,
+            transform 0.08s ease;
+        }
+
+        .act:hover:not(:disabled) {
+          background: #f1f4f7;
+          border-color: #b4bcc5;
+        }
+
+        .act:active:not(:disabled) {
+          transform: translateY(1px);
+        }
+
+        .act.actPrimary {
+          border-color: ${C.blue};
+          background: ${C.blue};
+          color: #fff;
+        }
+
+        .act.actPrimary:hover {
+          background: #1b57b3;
+          border-color: #1b57b3;
+        }
+
+        .act:disabled {
+          opacity: 0.45;
           cursor: default;
+        }
+
+        .act:focus-visible {
+          outline: 3px solid rgba(33, 102, 209, .3);
+          outline-offset: 2px;
+        }
+
+        @media (max-width: 760px) {
+          .forkActions {
+            margin-left: 0;
+            padding-left: 0;
+            border-left: 0;
+          }
         }
 
         @media (max-width: 760px) {
@@ -1567,10 +1640,17 @@ export default function SoundWaves({ onBack, disableSound = false }) {
                 {o.label}
               </button>
             ))}
+            {/* Actions on the fork, kept apart from the choice of source */}
             {source === "fork" && (
-              <button className="seg strikeBtn" onClick={strike}>
-                Strike the fork
-              </button>
+              <span className="forkActions" role="group" aria-label="Fork">
+                <span className="signalLabel">Fork</span>
+                <button className="act actPrimary" onClick={strike}>
+                  Strike
+                </button>
+                <button className="act" onClick={dampen} disabled={!ringing}>
+                  Dampen
+                </button>
+              </span>
             )}
             <span className="soundGroup">
               <button
