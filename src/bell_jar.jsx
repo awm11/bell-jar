@@ -150,7 +150,8 @@ const TRACERS_OUT = [650, 750, 850, 950, 1050];
 
 const OUT_BLOCKS = [
   [BASE.x0 - 6, BASE.y0 - 6, BASE.x1 + 6, H],
-  [PUMP.x0 - 6, PUMP.y0 - 6, PUMP.x1 + 22, H],
+  [PUMP.x0 - 6, PUMP.y0 - 6, PUMP.x1 + 5, H],
+  [PUMP.x1, PIPE_Y - 11, BASE.x0, H], // just the pipe from the pump to the base
   [SUPPLY.x0 - 6, SUPPLY.y0 - 6, SUPPLY.x1 + 6, H],
   [BASE.x1 - 4, FOOT, SUPPLY.x0 + 16, BENCH], // just the wire from the base to the supply
   [X0 - 30, BUNG.top - 8, X0 + 30, DOME_Y - RO + 20],
@@ -326,6 +327,20 @@ const GLASS = [];
 const GLASS_PLAIN = GLASS.filter((a) => !a.tracer);
 const GLASS_TRACERS = GLASS.filter((a) => a.tracer);
 
+// The rubber bung sits in the gap at the top of the dome, so it rides up and
+// down with the same vibration as the glass immediately around it there.
+const BUNG_WAVE = (() => {
+  const by = DOME_Y - RI; // where the inner glass meets the dome's apex
+  const rad = Math.hypot(X0 - S.x, by - S.y);
+  const taper =
+    GLASS_TAPER_MIN +
+    (1 - GLASS_TAPER_MIN) * smoothstep((FOOT - by) / (FOOT - DOME_Y + 40));
+  return {
+    ay: -GLASS_AMP * taper,
+    delay: Math.max(0, rad - BUZZER_R) / WAVE_SPEED,
+  };
+})();
+
 // ---------------------------------------------------------------------------
 // Pressure shading: one radial gradient for the air inside the jar and one for the
 // air outside, each centred on the buzzer. Their stops are re-coloured every frame.
@@ -428,6 +443,8 @@ export default function BellJar({ onBack, disableSound = false }) {
   const inStopRefs = useRef([]);
   const outStopRefs = useRef([]);
   const buzzerRef = useRef(null);
+  const bungRef = useRef(null);
+  const threadRef = useRef(null);
   const needleRef = useRef(null);
   const fanRef = useRef(null);
   const readoutRef = useRef(null);
@@ -592,6 +609,14 @@ export default function BellJar({ onBack, disableSound = false }) {
       glassRefs.current[0].setAttribute("d", gd);
       glassRefs.current[1].setAttribute("d", gd);
       glassRefs.current[2].setAttribute("d", svgPathFor(GLASS_TRACERS, t, envAt));
+
+      // --- Rubber bung: rides on the glass at the top of the dome ---
+      {
+        const tau = t - BUNG_WAVE.delay;
+        const dy = BUNG_WAVE.ay * envAt(tau) * Math.sin(TWO_PI * FREQ * tau);
+        bungRef.current.setAttribute("transform", "translate(0 " + dy.toFixed(2) + ")");
+        threadRef.current.setAttribute("y1", (BUNG.bottom + dy).toFixed(2));
+      }
 
       // --- Pressure shading ---
       const shade = (stops, refs) => {
@@ -1200,6 +1225,7 @@ export default function BellJar({ onBack, disableSound = false }) {
 
               {/* Rubber bung and the thread the buzzer hangs from */}
               <polygon
+                ref={bungRef}
                 points={
                   X0 - BUNG.wTop + "," + BUNG.top + " " +
                   (X0 + BUNG.wTop) + "," + BUNG.top + " " +
@@ -1212,6 +1238,7 @@ export default function BellJar({ onBack, disableSound = false }) {
                 strokeLinejoin="round"
               />
               <line
+                ref={threadRef}
                 x1={X0}
                 y1={BUNG.bottom}
                 x2={X0}
