@@ -197,6 +197,49 @@ const GRAPH_X = Array.from(
 const HIST_DT = 1 / 60;
 const HIST_N = 600;
 
+// The sound of the fork being struck, on top of its steady note: a knock, a
+// bright metallic overtone (a fork's "clang" tone, about 6¼ times its note)
+// that dies away within a fraction of a second, and the note itself starting
+// a touch sharp and settling. s is how hard it was struck (0 to 1).
+function twang(au, f0, s) {
+  const { ctx, master, osc } = au;
+  const now = ctx.currentTime;
+
+  const clang = ctx.createOscillator();
+  clang.type = "sine";
+  clang.frequency.setValueAtTime(f0 * 6.45, now);
+  clang.frequency.exponentialRampToValueAtTime(f0 * 6.27, now + 0.08);
+  const cg = ctx.createGain();
+  cg.gain.setValueAtTime(0, now);
+  cg.gain.linearRampToValueAtTime(0.4 * s, now + 0.004);
+  cg.gain.setTargetAtTime(0, now + 0.004, 0.07);
+  clang.connect(cg);
+  cg.connect(master);
+  clang.start(now);
+  clang.stop(now + 0.8);
+
+  const len = Math.floor(ctx.sampleRate * 0.04);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const ch = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * Math.exp(-i / (len * 0.12));
+  const knock = ctx.createBufferSource();
+  knock.buffer = buf;
+  const bp = ctx.createBiquadFilter();
+  bp.type = "bandpass";
+  bp.frequency.value = 2400;
+  bp.Q.value = 0.9;
+  const kg = ctx.createGain();
+  kg.gain.value = 0.5 * s;
+  knock.connect(bp);
+  bp.connect(kg);
+  kg.connect(master);
+  knock.start(now);
+
+  osc.frequency.cancelScheduledValues(now);
+  osc.frequency.setValueAtTime(f0 * 1.025, now);
+  osc.frequency.exponentialRampToValueAtTime(f0, now + 0.15);
+}
+
 const SOURCES = [
   { id: "speaker", label: "Loudspeaker" },
   { id: "fork", label: "Tuning fork" },
@@ -307,6 +350,7 @@ export default function SoundWaves({ onBack, disableSound = false }) {
     let prevPhi = 0;
     let prevAmp = ampNow;
     let fold = 0; // 0 = graph shown, 1 = minimised
+    let lastStrike = strikeRef.current;
 
     const phase = new Float64Array(HIST_N);
     const amp = new Float32Array(HIST_N);
@@ -373,7 +417,19 @@ export default function SoundWaves({ onBack, disableSound = false }) {
       const fork = sourceRef.current === "fork";
       const ring = fork ? Math.exp(-(now - strikeRef.current) / 1000 / FORK_DECAY) : 1;
       const target = (ampRef.current / 100) * (ring < 0.01 ? 0 : ring);
-      ampNow += (target - ampNow) * Math.min(1, dt / 0.12);
+
+      // Struck: the tines swing at full amplitude straight away, with no
+      // build-up. The jolt sends out a sharp-fronted wave at full strength.
+      let struck = false;
+      if (fork && strikeRef.current !== lastStrike) {
+        lastStrike = strikeRef.current;
+        const a1 = ampRef.current / 100;
+        ampNow = a1;
+        prevAmp = a1;
+        struck = a1 > 0;
+      } else {
+        ampNow += (target - ampNow) * Math.min(1, dt / 0.12);
+      }
       phiNow += ((TWO_PI * freqRef.current) / TIME_SCALE) * dt;
 
       const isRinging = !fork || ring >= 0.03;
@@ -399,10 +455,14 @@ export default function SoundWaves({ onBack, disableSound = false }) {
         coneRef.current.setAttribute("transform", "translate(" + srcDisp.toFixed(2) + " 0)");
       }
       if (prongRefs.current[0]) {
-        // the prongs bend in and out about their roots
+        // the prongs bend in and out about their roots (outline and fill together)
         const ang = ((srcDisp / 150) * 180) / Math.PI;
-        prongRefs.current[1].setAttribute("transform", "rotate(" + ang.toFixed(3) + " " + (FX + 19.5) + " 412)");
-        prongRefs.current[0].setAttribute("transform", "rotate(" + (-ang).toFixed(3) + " " + (FX - 19.5) + " 412)");
+        const right = "rotate(" + ang.toFixed(3) + " " + (FX + 19.5) + " 412)";
+        const left = "rotate(" + (-ang).toFixed(3) + " " + (FX - 19.5) + " 412)";
+        prongRefs.current[0].setAttribute("transform", left);
+        prongRefs.current[1].setAttribute("transform", right);
+        prongRefs.current[2].setAttribute("transform", left);
+        prongRefs.current[3].setAttribute("transform", right);
       }
 
       // --- Air particles ---
@@ -530,15 +590,22 @@ export default function SoundWaves({ onBack, disableSound = false }) {
         setMark("lamText", { x: (xa + xb) / 2, y: yl - 6 });
       }
       show("comp", haveAmp);
-      if (haveAmp) setMark("compText", { x: crestA.x });
+      if (haveAmp) setMark("compPos", { transform: "translate(" + crestA.x.toFixed(1) + " 0)" });
       show("rare", trough !== null);
-      if (trough) setMark("rareText", { x: trough.x });
+      if (trough) setMark("rarePos", { transform: "translate(" + trough.x.toFixed(1) + " 0)" });
 
       // --- Sound ---
       const au = audioRef.current;
       if (au.ctx) {
         const gain = Math.pow(ampNow, 1.2);
-        if (Math.abs(gain - au.appliedGain) > 0.005) {
+        if (struck) {
+          // full loudness at once, with the twang of the strike on top
+          const tNow = au.ctx.currentTime;
+          au.g.gain.cancelScheduledValues(tNow);
+          au.g.gain.setValueAtTime(gain, tNow);
+          au.appliedGain = gain;
+          twang(au, freqRef.current, ampNow);
+        } else if (Math.abs(gain - au.appliedGain) > 0.005) {
           au.g.gain.setTargetAtTime(gain, au.ctx.currentTime, 0.04);
           au.appliedGain = gain;
         }
@@ -1138,6 +1205,17 @@ export default function SoundWaves({ onBack, disableSound = false }) {
                 >
                   <path d="M0,1 L9,5 L0,9 Z" fill={C.ink} />
                 </marker>
+                <marker
+                  id="swArrowMuted"
+                  markerUnits="userSpaceOnUse"
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="8"
+                  refY="5"
+                  orient="auto"
+                >
+                  <path d="M0,1 L9,5 L0,9 Z" fill={C.muted} />
+                </marker>
                 <clipPath id="swGraphClip">
                   <rect
                     ref={(el) => (foldRefs.current.clip = el)}
@@ -1323,15 +1401,40 @@ export default function SoundWaves({ onBack, disableSound = false }) {
                 fontWeight="700"
                 textAnchor="middle"
               >
+                {/* Each label has an arrow pointing into the air at the place it names */}
                 <g ref={(el) => (markRefs.current.comp = el)} opacity="0">
-                  <text ref={(el) => (markRefs.current.compText = el)} y={BAND.y0 - 12} fill={C.ink}>
-                    Compression
-                  </text>
+                  <g ref={(el) => (markRefs.current.compPos = el)}>
+                    <text y={BAND.y0 - 14} fill={C.ink}>
+                      Compression
+                    </text>
+                    <line x1="0" y1={BAND.y0 - 8} x2="0" y2={BAND.y0 + 22} stroke="#fff" strokeWidth="6" strokeLinecap="round" />
+                    <line
+                      x1="0"
+                      y1={BAND.y0 - 8}
+                      x2="0"
+                      y2={BAND.y0 + 22}
+                      stroke={C.ink}
+                      strokeWidth="2"
+                      markerEnd="url(#swArrow)"
+                    />
+                  </g>
                 </g>
                 <g ref={(el) => (markRefs.current.rare = el)} opacity="0">
-                  <text ref={(el) => (markRefs.current.rareText = el)} y={BAND.y1 + 24} fill={C.muted}>
-                    Rarefaction
-                  </text>
+                  <g ref={(el) => (markRefs.current.rarePos = el)}>
+                    <text y={BAND.y1 + 26} fill={C.muted}>
+                      Rarefaction
+                    </text>
+                    <line x1="0" y1={BAND.y1 + 9} x2="0" y2={BAND.y1 - 21} stroke="#fff" strokeWidth="6" strokeLinecap="round" />
+                    <line
+                      x1="0"
+                      y1={BAND.y1 + 9}
+                      x2="0"
+                      y2={BAND.y1 - 21}
+                      stroke={C.muted}
+                      strokeWidth="2"
+                      markerEnd="url(#swArrowMuted)"
+                    />
+                  </g>
                 </g>
               </g>
 
@@ -1377,36 +1480,27 @@ export default function SoundWaves({ onBack, disableSound = false }) {
                 </g>
               ) : (
                 <g>
-                  <line x1={FX} y1="428" x2={FX} y2={H - 30} stroke={C.metalDark} strokeWidth="11" strokeLinecap="round" />
-                  <line x1={FX} y1="428" x2={FX} y2={H - 30} stroke="#b4bcc5" strokeWidth="7" strokeLinecap="round" />
-                  <path
-                    d={"M" + (FX - 19.5) + ",410 A19.5,19.5 0 0 0 " + (FX + 19.5) + ",410"}
-                    stroke={C.metalDark}
-                    strokeWidth="13"
-                    fill="none"
-                  />
-                  <path
-                    d={"M" + (FX - 19.5) + ",410 A19.5,19.5 0 0 0 " + (FX + 19.5) + ",410"}
-                    stroke="#c3cad2"
-                    strokeWidth="9"
-                    fill="none"
-                  />
-                  {[0, 1].map((side) => (
-                    <g key={side} ref={(el) => (prongRefs.current[side] = el)}>
+                  {/* Drawn in two passes, every outline first and then every fill on
+                      top, so the tines, bend and handle read as one piece of metal.
+                      Each tine has a group in each pass; both turn together. */}
+                  {[
+                    { stroke: C.metalDark, tine: 13, handle: 11 },
+                    { stroke: "#c3cad2", tine: 9, handle: 7 },
+                  ].map((pass, k) => (
+                    <g key={k} fill="none" stroke={pass.stroke} strokeLinecap="round">
+                      <line x1={FX} y1="428" x2={FX} y2={H - 30} strokeWidth={pass.handle} />
                       <path
-                        d={"M" + (side ? FX + 19.5 : FX - 19.5) + "," + (BAND.y0 + 4) + " V412"}
-                        stroke={C.metalDark}
-                        strokeWidth="13"
-                        strokeLinecap="round"
-                        fill="none"
+                        d={"M" + (FX - 19.5) + ",410 A19.5,19.5 0 0 0 " + (FX + 19.5) + ",410"}
+                        strokeWidth={pass.tine}
                       />
-                      <path
-                        d={"M" + (side ? FX + 19.5 : FX - 19.5) + "," + (BAND.y0 + 4) + " V412"}
-                        stroke="#c3cad2"
-                        strokeWidth="9"
-                        strokeLinecap="round"
-                        fill="none"
-                      />
+                      {[0, 1].map((side) => (
+                        <path
+                          key={side}
+                          ref={(el) => (prongRefs.current[side + 2 * k] = el)}
+                          d={"M" + (side ? FX + 19.5 : FX - 19.5) + "," + (BAND.y0 + 4) + " V412"}
+                          strokeWidth={pass.tine}
+                        />
+                      ))}
                     </g>
                   ))}
                   <text x={FX - 40} y={BAND.y1 + 50} fontSize="18" fill={C.ink} textAnchor="end">
