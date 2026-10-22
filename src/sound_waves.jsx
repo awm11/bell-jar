@@ -41,6 +41,8 @@ const MID_Y = (BAND.y0 + BAND.y1) / 2;
 const GRAPH = { x: 60, y: 16, w: 1070, h: 190 };
 const G0 = GRAPH.y + GRAPH.h / 2 + 10; // zero line of the graph
 const GA = 58; // graph height at full amplitude
+const GRAPH_MIN_H = 44; // the graph panel's height when minimised
+const FOLD = GRAPH.h - GRAPH_MIN_H; // how far everything below moves up
 const FX = 205; // tuning fork centre line
 
 const seededRandom = (seed) => () => {
@@ -222,6 +224,10 @@ export default function SoundWaves({ onBack, disableSound = false }) {
   const labelsRef = useRef(true);
   labelsRef.current = showLabels;
   const strikeRef = useRef(performance.now());
+  const [graphOpen, setGraphOpen] = useState(true);
+  const graphOpenRef = useRef(true);
+  graphOpenRef.current = graphOpen;
+  const foldRefs = useRef({});
 
   const audioRef = useRef({});
   const airRefs = useRef([]);
@@ -300,6 +306,7 @@ export default function SoundWaves({ onBack, disableSound = false }) {
     let prevT = 0;
     let prevPhi = 0;
     let prevAmp = ampNow;
+    let fold = 0; // 0 = graph shown, 1 = minimised
 
     const phase = new Float64Array(HIST_N);
     const amp = new Float32Array(HIST_N);
@@ -343,6 +350,24 @@ export default function SoundWaves({ onBack, disableSound = false }) {
       const dt = real * speed;
       simT += dt;
       const t = simT;
+
+      // --- Minimising the pressure graph: the panel shrinks to its title bar
+      // and everything below slides up, so the whole picture gets shorter ---
+      const foldTarget = graphOpenRef.current ? 0 : 1;
+      if (fold !== foldTarget) {
+        fold += (foldTarget - fold) * Math.min(1, real * 10);
+        if (Math.abs(foldTarget - fold) < 0.002) fold = foldTarget;
+        const e = fold * fold * (3 - 2 * fold);
+        const f = foldRefs.current;
+        if (f.svg) {
+          f.svg.setAttribute("viewBox", "0 0 " + W + " " + (H - FOLD * e).toFixed(2));
+          f.lower.setAttribute("transform", "translate(0 " + (-FOLD * e).toFixed(2) + ")");
+          f.panel.setAttribute("height", (GRAPH.h - FOLD * e).toFixed(2));
+          f.clip.setAttribute("height", (GRAPH.h - FOLD * e).toFixed(2));
+          f.body.setAttribute("opacity", Math.max(0, 1 - e * 2.2).toFixed(3));
+          f.body.style.visibility = fold === 1 ? "hidden" : "visible";
+        }
+      }
 
       // --- The source ---
       const fork = sourceRef.current === "fork";
@@ -657,10 +682,60 @@ export default function SoundWaves({ onBack, disableSound = false }) {
           padding: 12px;
         }
 
-        .stage svg {
+        .stageInner {
+          position: relative;
+          container-type: inline-size;
+        }
+
+        .stageInner > svg {
           display: block;
           width: 100%;
           height: auto;
+        }
+
+        /* Sits in the top-right corner of the graph panel (positions are in
+           diagram units, scaled with the width of the picture) */
+        .graphToggle {
+          position: absolute;
+          --size: max(22px, calc(32 / ${W} * 100cqw));
+          /* centred on the panel's title bar, which is all that's left when minimised */
+          top: calc(${GRAPH.y + GRAPH_MIN_H / 2} / ${W} * 100cqw - var(--size) / 2);
+          right: calc(${W - GRAPH.x - GRAPH.w + 8} / ${W} * 100cqw);
+          width: var(--size);
+          height: var(--size);
+          display: grid;
+          place-items: center;
+          padding: 0;
+          border: 1px solid #d9dee4;
+          border-radius: 8px;
+          background: #ffffff;
+          color: ${C.muted};
+          cursor: pointer;
+          transition:
+            background 0.15s ease,
+            color 0.15s ease,
+            border-color 0.15s ease;
+        }
+
+        .graphToggle:hover {
+          background: #f1f4f7;
+          border-color: #c8ced7;
+          color: ${C.ink};
+        }
+
+        .graphToggle:focus-visible {
+          outline: 3px solid rgba(33, 102, 209, 0.25);
+          outline-offset: 2px;
+        }
+
+        .graphToggle svg {
+          width: 62%;
+          height: 62%;
+          fill: none;
+          stroke: currentColor;
+          stroke-width: 2.4;
+          stroke-linecap: round;
+          stroke-linejoin: round;
         }
 
         .signalBar {
@@ -987,7 +1062,25 @@ export default function SoundWaves({ onBack, disableSound = false }) {
           )}
 
           <div className="stage">
+            <div className="stageInner">
+            <button
+              type="button"
+              className="graphToggle"
+              onClick={() => setGraphOpen((o) => !o)}
+              aria-expanded={graphOpen}
+              aria-label={graphOpen ? "Minimise the air pressure graph" : "Show the air pressure graph"}
+              title={graphOpen ? "Minimise" : "Show graph"}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                {graphOpen ? (
+                  <path d="M6,12 H18" />
+                ) : (
+                  <path d="M7,10 L12,15 L17,10" />
+                )}
+              </svg>
+            </button>
             <svg
+              ref={(el) => (foldRefs.current.svg = el)}
               viewBox={"0 0 " + W + " " + H}
               role="img"
               aria-label="A sound source making a longitudinal wave in air particles, with a graph of air pressure along the wave"
@@ -1045,10 +1138,20 @@ export default function SoundWaves({ onBack, disableSound = false }) {
                 >
                   <path d="M0,1 L9,5 L0,9 Z" fill={C.ink} />
                 </marker>
+                <clipPath id="swGraphClip">
+                  <rect
+                    ref={(el) => (foldRefs.current.clip = el)}
+                    x={GRAPH.x}
+                    y={GRAPH.y}
+                    width={GRAPH.w}
+                    height={GRAPH.h}
+                  />
+                </clipPath>
               </defs>
 
               {/* Pressure graph */}
               <rect
+                ref={(el) => (foldRefs.current.panel = el)}
                 x={GRAPH.x}
                 y={GRAPH.y}
                 width={GRAPH.w}
@@ -1058,10 +1161,11 @@ export default function SoundWaves({ onBack, disableSound = false }) {
                 stroke="#d9dee4"
                 strokeWidth="1.5"
               />
-              <text x={GRAPH.x + 16} y={GRAPH.y + 26} fontSize="16" fontWeight="600" fill={C.ink}>
+              <text x={GRAPH.x + 16} y={GRAPH.y + 28} fontSize="16" fontWeight="600" fill={C.ink}>
                 Air pressure
               </text>
-              <text x={GRAPH.x + 16} y={GRAPH.y + 46} fontSize="13" fill={C.muted}>
+              <g ref={(el) => (foldRefs.current.body = el)} clipPath="url(#swGraphClip)">
+              <text x={GRAPH.x + 16} y={GRAPH.y + 48} fontSize="13" fill={C.muted}>
                 along the wave
               </text>
               <line
@@ -1141,6 +1245,10 @@ export default function SoundWaves({ onBack, disableSound = false }) {
                   </text>
                 </g>
               </g>
+              </g>
+
+              {/* Everything below the graph: slides up when the graph is minimised */}
+              <g ref={(el) => (foldRefs.current.lower = el)}>
 
               {/* Air */}
               <rect
@@ -1313,7 +1421,9 @@ export default function SoundWaves({ onBack, disableSound = false }) {
               <text x="700" y={BAND.y1 + 62} fontSize="18" fill={C.ink} textAnchor="middle">
                 Air particles
               </text>
+              </g>
             </svg>
+            </div>
           </div>
 
           <div className="signalBar">
@@ -1491,10 +1601,19 @@ export function SoundWavesPreview() {
           padding: 0;
         }
 
-        .soundWavesPreview .stage svg {
+        .soundWavesPreview .stageInner {
+          width: 100%;
+          height: 100%;
+        }
+
+        .soundWavesPreview .stageInner > svg {
           width: 100%;
           height: 100%;
           display: block;
+        }
+
+        .soundWavesPreview .graphToggle {
+          display: none;
         }
       `}</style>
 
