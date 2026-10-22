@@ -4,6 +4,7 @@ const C = {
   ink: "#202020",
   blue: "#2166d1",
   blueLight: "#eaf3ff",
+  tracer: "#dc2626",
   green: "#2d9b55",
   amber: "#c9821b",
   muted: "#59636f",
@@ -25,7 +26,7 @@ const GLASS_AMP = 2.4;
 // The glass vibrates less and less towards the base, where it is held still
 const GLASS_TAPER_MIN = 0.05;
 const BUZZER_PULSE = 0.07;
-const SHADE_MAX = 0.32;
+const SHADE_MAX = 0.2;
 const SLOW_FACTOR = 0.2;
 const PUMP_TAU = 2.5; // seconds for the air left in the jar to fall by a factor of e
 const VENT_TAU = 1.1;
@@ -149,7 +150,8 @@ const TRACERS_OUT = [650, 750, 850, 950, 1050];
 const OUT_BLOCKS = [
   [BASE.x0 - 6, BASE.y0 - 6, BASE.x1 + 6, H],
   [PUMP.x0 - 6, PUMP.y0 - 6, PUMP.x1 + 22, H],
-  [SUPPLY.x0 - 42, SUPPLY.y0 - 6, SUPPLY.x1 + 6, H],
+  [SUPPLY.x0 - 6, SUPPLY.y0 - 6, SUPPLY.x1 + 6, H],
+  [BASE.x1 - 4, FOOT, SUPPLY.x0 + 16, BENCH], // just the wire from the base to the supply
   [X0 - 30, BUNG.top - 8, X0 + 30, DOME_Y - RO + 20],
 ];
 
@@ -253,7 +255,7 @@ const AIR_GROUPS = [
   { color: C.metal, width: 5.5, pts: AIR.filter((p) => !p.tracer && p.r < 2.9) },
   { color: C.metal, width: 6.1, pts: AIR.filter((p) => !p.tracer && p.r >= 2.9 && p.r < 3.2) },
   { color: C.metal, width: 6.7, pts: AIR.filter((p) => !p.tracer && p.r >= 3.2) },
-  { color: C.blue, width: 9, pts: AIR.filter((p) => p.tracer) },
+  { color: C.tracer, width: 9, pts: AIR.filter((p) => p.tracer) },
 ];
 
 // ---------------------------------------------------------------------------
@@ -564,7 +566,11 @@ export default function BellJar({ onBack, disableSound = false }) {
       }
       // Air in the pipe
       pipeOffset +=
-        (mode === "pump" && air > 0 ? PIPE_FLOW_SPEED : mode === "vent" ? -PIPE_FLOW_SPEED : 0) * dt;
+        (mode === "pump" && air > 0
+          ? PIPE_FLOW_SPEED
+          : mode === "vent" && air < 1
+            ? -PIPE_FLOW_SPEED
+            : 0) * dt;
       for (let n = 0; n < PIPE_AIR.length; n++) {
         const q = PIPE_AIR[n];
         if (q.u >= air) continue;
@@ -1140,7 +1146,7 @@ export default function BellJar({ onBack, disableSound = false }) {
               <line x1="0" y1={BENCH} x2={W} y2={BENCH} stroke="#c6ccd3" strokeWidth="2" />
 
               {/* Glass wall */}
-              <path d={GLASS_BAND} fill="#e3f3f8" stroke="#a9d1de" strokeWidth="1.2" />
+              <path d={GLASS_BAND} fill="#e3f3f8" />
 
               {/* Resting positions of the tracer particles */}
               {AIR.filter((p) => p.tracer).map((p) => (
@@ -1185,7 +1191,7 @@ export default function BellJar({ onBack, disableSound = false }) {
               <path
                 ref={(el) => (glassRefs.current[2] = el)}
                 fill="none"
-                stroke={C.blue}
+                stroke={C.tracer}
                 strokeWidth={2 * ATOM_R + 1.5}
                 strokeLinecap="round"
               />
@@ -1288,7 +1294,7 @@ export default function BellJar({ onBack, disableSound = false }) {
               <path
                 ref={(el) => (movingRefs.current[1] = el)}
                 fill="none"
-                stroke={C.blue}
+                stroke={C.tracer}
                 strokeWidth="9"
                 strokeLinecap="round"
               />
