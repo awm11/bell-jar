@@ -1,3 +1,4 @@
+import { BrandLogo, SiteFooter } from "./Branding.jsx";
 import { useEffect, useState } from "react";
 import SoundWaves, { SoundWavesPreview } from "./sound_waves.jsx";
 import BellJar, { BellJarPreview } from "./bell_jar.jsx";
@@ -296,10 +297,13 @@ export default function App() {
       `}</style>
 
       <header className="simpleHeader">
-        <div className="simpleHeaderInner">
-          <div className="simpleEyebrow">PHYSICS • WAVES</div>
-          <h1>Sound</h1>
-          <p>Interactive simulations of how sound is made and how it travels.</p>
+        <div className="simpleHeaderInner has-brand">
+          <div>
+            <div className="simpleEyebrow">PHYSICS • WAVES</div>
+            <h1>Sound</h1>
+            <p>Interactive simulations of how sound is made and how it travels.</p>
+          </div>
+          <BrandLogo />
         </div>
       </header>
 
@@ -341,6 +345,7 @@ export default function App() {
             );
           })}
         </div>
+        <SiteFooter />
       </main>
     </div>
   );

@@ -1,3 +1,4 @@
+import { BrandLogo, SiteFooter } from "./Branding.jsx";
 import { useEffect, useRef, useState } from "react";
 
 const C = {
@@ -1047,7 +1048,8 @@ export default function BellJar({ onBack, disableSound = false }) {
         }
       `}</style>
 
-      <div className="shell">
+      <div className={onBack ? "shell has-brand" : "shell"}>
+        {onBack && <BrandLogo className="page-logo" />}
         <header className="heading">
           <div className="eyebrow">Sound • 02</div>
           <h1>The Bell Jar Experiment</h1>
@@ -1613,6 +1615,7 @@ export default function BellJar({ onBack, disableSound = false }) {
             </p>
           </div>
         </section>
+        {onBack && <SiteFooter />}
       </div>
     </main>
   );
