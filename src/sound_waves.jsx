@@ -83,6 +83,31 @@ const AIR_GROUPS = [
   { color: C.blue, width: 9, pts: AIR.filter((p) => p.tracer) },
 ];
 
+// Extra air particles around the tuning fork: fills the gap right behind
+// the tines, between them, and to their far side, so switching to the fork
+// doesn't leave the empty space where the speaker's cone would otherwise
+// be. Only shown when the fork is the selected source.
+const FORK_X0 = 120;
+const FORK_AIR = [];
+{
+  const rand = seededRandom(13);
+  for (let gy = BAND.y0 + 6; gy < BAND.y1 - 2; gy += 13) {
+    for (let gx = FORK_X0; gx < BAND.x0 - 2; gx += 11) {
+      const x = gx + (rand() - 0.5) * 8;
+      const y = gy + (rand() - 0.5) * 9;
+      const r = 2.6 + rand() * 0.8;
+      FORK_AIR.push({ x, y, r });
+    }
+  }
+  FORK_AIR.forEach((p) => (p.delay = delayAt(p.x)));
+}
+
+const FORK_AIR_GROUPS = [
+  { color: C.metal, width: 5.5, pts: FORK_AIR.filter((p) => p.r < 2.9) },
+  { color: C.metal, width: 6.1, pts: FORK_AIR.filter((p) => p.r >= 2.9 && p.r < 3.2) },
+  { color: C.metal, width: 6.7, pts: FORK_AIR.filter((p) => p.r >= 3.2) },
+];
+
 const SHADE_STOPS = Array.from({ length: 130 }, (_, k) => {
   const x = BAND.x0 + (k / 129) * (BAND.x1 - BAND.x0);
   return {
@@ -132,6 +157,7 @@ export default function SoundWaves({ onBack, disableSound = false }) {
 
   const audioRef = useRef({});
   const airRefs = useRef([]);
+  const forkAirRefs = useRef([]);
   const stopRefs = useRef([]);
   const traceRef = useRef(null);
   const coneRef = useRef(null);
@@ -295,6 +321,17 @@ export default function SoundWaves({ onBack, disableSound = false }) {
           d += "M" + x.toFixed(1) + " " + p.y.toFixed(1) + "h0";
         }
         airRefs.current[g].setAttribute("d", d);
+      });
+
+      FORK_AIR_GROUPS.forEach((grp, g) => {
+        let d = "";
+        for (let n = 0; n < grp.pts.length; n++) {
+          const p = grp.pts[n];
+          sample(t - p.delay);
+          const x = p.x + DISP * outAmp * Math.sin(outPhi);
+          d += "M" + x.toFixed(1) + " " + p.y.toFixed(1) + "h0";
+        }
+        if (forkAirRefs.current[g]) forkAirRefs.current[g].setAttribute("d", d);
       });
 
       // --- Shading: darker where the air is squashed together ---
@@ -1034,6 +1071,22 @@ export default function SoundWaves({ onBack, disableSound = false }) {
                   strokeLinecap="round"
                 />
               ))}
+
+              {/* Extra air around the tuning fork: close to, between and
+                  behind the tines. Hidden (but still animated) for the
+                  speaker, whose cone occupies this space instead. */}
+              <g style={{ ...markStyle, opacity: source === "fork" ? 1 : 0 }}>
+                {FORK_AIR_GROUPS.map((g, k) => (
+                  <path
+                    key={"fork" + k}
+                    ref={(el) => (forkAirRefs.current[k] = el)}
+                    fill="none"
+                    stroke={g.color}
+                    strokeWidth={g.width}
+                    strokeLinecap="round"
+                  />
+                ))}
+              </g>
 
               {/* Compression and rarefaction, lined up with the graph */}
               <g
