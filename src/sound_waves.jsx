@@ -43,6 +43,11 @@ const G0 = GRAPH.y + GRAPH.h / 2 + 10; // zero line of the graph
 const GA = 58; // graph height at full amplitude
 const GRAPH_MIN_H = 44; // the graph panel's height when minimised
 const FOLD = GRAPH.h - GRAPH_MIN_H; // how far everything below moves up
+// Below this height the amplitude arrowheads go outside the gap, pointing in
+// (each head is 9 long, so two need over 30 to sit inside with a clear line between)
+const AMP_ARROWS_INSIDE = 34;
+const AMP_OUT_LEN = 22; // length of each outside arrow, head included
+const LABEL_MIN_AMP = 0.03; // below this the wave is too flat to label
 const FX = 205; // tuning fork centre line
 
 const seededRandom = (seed) => () => {
@@ -351,6 +356,7 @@ export default function SoundWaves({ onBack, disableSound = false }) {
     let prevAmp = ampNow;
     let fold = 0; // 0 = graph shown, 1 = minimised
     let lastStrike = strikeRef.current;
+    let wasAmpSmall = false;
 
     const phase = new Float64Array(HIST_N);
     const amp = new Float32Array(HIST_N);
@@ -532,7 +538,7 @@ export default function SoundWaves({ onBack, disableSound = false }) {
       if (labelsRef.current) {
         const dxg = GRAPH_X[1] - GRAPH_X[0];
         for (let n = 1; n < GRAPH_X.length - 1; n++) {
-          if (amps[n] < 0.12) continue;
+          if (amps[n] < LABEL_MIN_AMP) continue;
           const a = ys[n - 1];
           const b = ys[n];
           const c = ys[n + 1];
@@ -559,8 +565,11 @@ export default function SoundWaves({ onBack, disableSound = false }) {
         crestA = best;
       }
       const nextAfter = (list, x) => list.find((m) => m.x > x + 2) || null;
+      // the wavelength label must not run under the minimise button
+      const LABEL_END = GRAPH.x + GRAPH.w - 60;
       let trough = crestA ? nextAfter(minima, crestA.x) : null;
       let crestB = trough ? nextAfter(maxima, trough.x) : null;
+      if (crestB && crestB.x > LABEL_END) crestB = null;
       if (!crestA || !crestB) {
         // start again on the first compression near the source
         crestA = nextAfter(maxima, BAND.x0 + 20);
@@ -571,12 +580,30 @@ export default function SoundWaves({ onBack, disableSound = false }) {
 
       const show = (key, on) => setMark(key, { opacity: on ? 1 : 0 });
       const haveAmp = crestA !== null;
+      let ampSmall = false;
       show("amp", haveAmp);
       if (haveAmp) {
         const x = crestA.x;
         const yTop = G0 - crestA.y * GA;
-        setMark("ampLine", { x1: x, x2: x, y1: G0, y2: yTop + 2 });
-        setMark("ampText", { x: x + 10, y: (G0 + yTop) / 2 + 5 });
+        const h = G0 - yTop;
+        // a little hysteresis, so a slowly fading fork doesn't flicker between styles
+        ampSmall = wasAmpSmall ? h < AMP_ARROWS_INSIDE + 3 : h < AMP_ARROWS_INSIDE;
+        wasAmpSmall = ampSmall;
+        if (!ampSmall) {
+          // room for both arrowheads between the levels: one double-headed arrow
+          setMark("ampLine", { display: "inline", x1: x, x2: x, y1: G0, y2: yTop + 2 });
+          setMark("ampSmall", { display: "none" });
+        } else {
+          // too small: arrowheads outside, pointing in at the two levels,
+          // joined by a plain line (as on a technical drawing)
+          setMark("ampLine", { display: "none" });
+          setMark("ampSmall", { display: "inline" });
+          setMark("ampJoin", { x1: x, x2: x, y1: G0, y2: yTop });
+          setMark("ampOutTop", { x1: x, x2: x, y1: yTop - 2 - AMP_OUT_LEN, y2: yTop - 2 });
+          setMark("ampOutBot", { x1: x, x2: x, y1: G0 + 1 + AMP_OUT_LEN, y2: G0 + 1 });
+        }
+        // in a small gap the word would sit on the wave, so it goes just above it
+        setMark("ampText", { x: x + 10, y: ampSmall ? yTop - 6 : (G0 + yTop) / 2 + 5 });
       }
       const haveLambda = crestA !== null && crestB !== null;
       show("lambda", haveLambda);
@@ -585,7 +612,9 @@ export default function SoundWaves({ onBack, disableSound = false }) {
         const xb = crestB.x;
         const yl = GRAPH.y + 26;
         setMark("lamLine", { x1: xa + 2, x2: xb - 2, y1: yl, y2: yl });
-        setMark("lamDropA", { x1: xa, x2: xa, y1: yl - 6, y2: G0 - crestA.y * GA });
+        // stop short of the outside amplitude arrow, which shares this line
+        const dropA = G0 - crestA.y * GA - (ampSmall ? AMP_OUT_LEN + 5 : 0);
+        setMark("lamDropA", { x1: xa, x2: xa, y1: yl - 6, y2: dropA });
         setMark("lamDropB", { x1: xb, x2: xb, y1: yl - 6, y2: G0 - crestB.y * GA });
         setMark("lamText", { x: (xa + xb) / 2, y: yl - 6 });
       }
@@ -1280,6 +1309,12 @@ export default function SoundWaves({ onBack, disableSound = false }) {
                     markerStart="url(#swArrow)"
                     markerEnd="url(#swArrow)"
                   />
+                  {/* small amplitudes: arrows outside, pointing in */}
+                  <g ref={(el) => (markRefs.current.ampSmall = el)} display="none" stroke={C.ink} strokeWidth="1.6">
+                    <line ref={(el) => (markRefs.current.ampJoin = el)} />
+                    <line ref={(el) => (markRefs.current.ampOutTop = el)} markerEnd="url(#swArrow)" />
+                    <line ref={(el) => (markRefs.current.ampOutBot = el)} markerEnd="url(#swArrow)" />
+                  </g>
                   <text
                     ref={(el) => (markRefs.current.ampText = el)}
                     fontSize="14"
