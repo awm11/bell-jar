@@ -203,47 +203,76 @@ const GRAPH_X = Array.from(
 const HIST_DT = 1 / 60;
 const HIST_N = 600;
 
-// The sound of the fork being struck, on top of its steady note: a knock, a
-// bright metallic overtone (a fork's "clang" tone, about 6¼ times its note)
-// that dies away within a fraction of a second, and the note itself starting
-// a touch sharp and settling. s is how hard it was struck (0 to 1).
-function twang(au, f0, s) {
-  const { ctx, master, osc } = au;
+// ---------------------------------------------------------------------------
+// The fork's sound, scheduled in the audio engine itself so the strike and the
+// ring-down are smooth and exactly timed. What a struck fork sounds like:
+//  - its note: an almost pure tone that starts at once and fades away over
+//    several seconds, at a steady pitch
+//  - a "ting" when struck: the fork's clang tone, about 6.27 times the note
+//    (not a harmonic), loud for an instant and gone within a fraction of a
+//    second; it keeps its pitch too
+//  - the strike itself: a soft, low thud, like a rubber mallet
+// Audio graph: note -> level (how hard) -> env (strike and ring-down)
+//              -> damp (gripped) -> master
+// ---------------------------------------------------------------------------
+const CLANG_RATIO = 6.27;
+const CLANG_TAU = 0.13;
+
+function forkStrike(au, f0, s) {
+  const { ctx, env, damp, master } = au;
   const now = ctx.currentTime;
 
+  // Start from whatever is sounding now (a fork still ringing, or the
+  // loudspeaker's tone just before switching), so nothing clicks
+  const held = env.gain.value * damp.gain.value;
+  env.gain.cancelScheduledValues(now);
+  env.gain.setValueAtTime(held, now);
+  env.gain.linearRampToValueAtTime(1, now + 0.004);
+  env.gain.setTargetAtTime(0, now + 0.004, FORK_DECAY);
+  damp.gain.cancelScheduledValues(now);
+  damp.gain.setValueAtTime(1, now);
+
+  // The ting
   const clang = ctx.createOscillator();
   clang.type = "sine";
-  clang.frequency.setValueAtTime(f0 * 6.45, now);
-  clang.frequency.exponentialRampToValueAtTime(f0 * 6.27, now + 0.08);
+  clang.frequency.value = f0 * CLANG_RATIO;
   const cg = ctx.createGain();
   cg.gain.setValueAtTime(0, now);
-  cg.gain.linearRampToValueAtTime(0.4 * s, now + 0.004);
-  cg.gain.setTargetAtTime(0, now + 0.004, 0.07);
+  cg.gain.linearRampToValueAtTime(0.16 * Math.pow(s, 1.4), now + 0.003);
+  cg.gain.setTargetAtTime(0, now + 0.003, CLANG_TAU);
   clang.connect(cg);
-  cg.connect(master);
+  cg.connect(damp); // gripping the fork stops the ting too
   clang.start(now);
-  clang.stop(now + 0.8);
+  clang.stop(now + CLANG_TAU * 10);
 
-  const len = Math.floor(ctx.sampleRate * 0.04);
+  // The thud of the mallet
+  const len = Math.floor(ctx.sampleRate * 0.05);
   const buf = ctx.createBuffer(1, len, ctx.sampleRate);
   const ch = buf.getChannelData(0);
-  for (let i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * Math.exp(-i / (len * 0.12));
-  const knock = ctx.createBufferSource();
-  knock.buffer = buf;
-  const bp = ctx.createBiquadFilter();
-  bp.type = "bandpass";
-  bp.frequency.value = 2400;
-  bp.Q.value = 0.9;
-  const kg = ctx.createGain();
-  kg.gain.value = 0.5 * s;
-  knock.connect(bp);
-  bp.connect(kg);
-  kg.connect(master);
-  knock.start(now);
+  const k = ctx.sampleRate * 0.007;
+  for (let i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * Math.exp(-i / k);
+  const thud = ctx.createBufferSource();
+  thud.buffer = buf;
+  const lp = ctx.createBiquadFilter();
+  lp.type = "lowpass";
+  lp.frequency.value = 450;
+  lp.Q.value = 0.5;
+  const tg = ctx.createGain();
+  tg.gain.value = 0.9 * s;
+  thud.connect(lp);
+  lp.connect(tg);
+  tg.connect(master);
+  thud.start(now);
+}
 
-  osc.frequency.cancelScheduledValues(now);
-  osc.frequency.setValueAtTime(f0 * 1.025, now);
-  osc.frequency.exponentialRampToValueAtTime(f0, now + 0.15);
+// Pick up the fork's ring-down where it is now (when sound starts mid-ring)
+function forkResume(au, ringNow, damped) {
+  const now = au.ctx.currentTime;
+  au.env.gain.cancelScheduledValues(now);
+  au.env.gain.setValueAtTime(ringNow, now);
+  au.env.gain.setTargetAtTime(0, now, damped ? DAMP_TAU : FORK_DECAY);
+  au.damp.gain.cancelScheduledValues(now);
+  au.damp.gain.setValueAtTime(1, now);
 }
 
 const SOURCES = [
@@ -325,12 +354,27 @@ export default function SoundWaves({ onBack, disableSound = false }) {
       const osc = ctx.createOscillator();
       osc.type = "sine";
       osc.frequency.value = freqRef.current;
-      const g = ctx.createGain();
+      const g = ctx.createGain(); // level: the amplitude, or how hard the fork is struck
       g.gain.value = 0;
+      const env = ctx.createGain(); // the fork's strike and ring-down (1 for the speaker)
+      const damp = ctx.createGain(); // gripping the fork (1 when free)
       osc.connect(g);
-      g.connect(master);
+      g.connect(env);
+      env.connect(damp);
+      damp.connect(master);
       osc.start();
-      Object.assign(a, { ctx, master, osc, g, appliedGain: -1, appliedFreq: -1 });
+      Object.assign(a, {
+        ctx,
+        master,
+        osc,
+        g,
+        env,
+        damp,
+        appliedGain: -1,
+        appliedFreq: -1,
+        forkMode: false,
+        dampedAt: null,
+      });
     };
 
     window.addEventListener("pointerdown", start);
@@ -644,17 +688,40 @@ export default function SoundWaves({ onBack, disableSound = false }) {
       // --- Sound ---
       const au = audioRef.current;
       if (au.ctx) {
-        const gain = Math.pow(ampNow, 1.2);
+        const tNow = au.ctx.currentTime;
+        // Loudspeaker: the level follows the amplitude, frame by frame.
+        // Fork: the level is how hard it is struck; the audio engine itself
+        // shapes the strike and the ring-down (see forkStrike).
+        const s = ampRef.current / 100;
+        const gain = Math.pow(fork ? s : ampNow, 1.2);
         if (struck) {
-          // full loudness at once, with the twang of the strike on top
-          const tNow = au.ctx.currentTime;
           au.g.gain.cancelScheduledValues(tNow);
           au.g.gain.setValueAtTime(gain, tNow);
           au.appliedGain = gain;
-          twang(au, freqRef.current, ampNow);
+          forkStrike(au, freqRef.current, s);
+          au.forkMode = true;
+          au.dampedAt = null;
         } else if (Math.abs(gain - au.appliedGain) > 0.005) {
-          au.g.gain.setTargetAtTime(gain, au.ctx.currentTime, 0.04);
+          au.g.gain.setTargetAtTime(gain, tNow, 0.04);
           au.appliedGain = gain;
+        }
+        if (fork && !au.forkMode) {
+          // sound switched on while the fork was already ringing
+          forkResume(au, ring, damp !== null);
+          au.forkMode = true;
+          au.dampedAt = damp;
+        } else if (!fork && au.forkMode) {
+          au.env.gain.cancelScheduledValues(tNow);
+          au.env.gain.setTargetAtTime(1, tNow, 0.03);
+          au.damp.gain.cancelScheduledValues(tNow);
+          au.damp.gain.setTargetAtTime(1, tNow, 0.03);
+          au.forkMode = false;
+        }
+        if (fork && damp !== null && au.dampedAt !== damp) {
+          // gripped: the note and any ting die away almost at once
+          au.damp.gain.cancelScheduledValues(tNow);
+          au.damp.gain.setTargetAtTime(0, tNow, DAMP_TAU);
+          au.dampedAt = damp;
         }
         if (freqRef.current !== au.appliedFreq) {
           au.osc.frequency.setTargetAtTime(freqRef.current, au.ctx.currentTime, 0.03);
