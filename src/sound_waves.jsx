@@ -84,30 +84,97 @@ const AIR_GROUPS = [
   { color: C.blue, width: 9, pts: AIR.filter((p) => p.tracer) },
 ];
 
-// Extra air particles around the tuning fork: fills the gap right behind
-// the tines, between them, and to their far side, so switching to the fork
-// doesn't leave the empty space where the speaker's cone would otherwise
-// be. Only shown when the fork is the selected source.
-const FORK_X0 = 120;
+// ---------------------------------------------------------------------------
+// Tuning fork. Both tines swing outwards together, then inwards together. So
+// each tine sends a wave out from its outer side: one travelling right (the
+// same wave the loudspeaker makes) and a mirror-image one travelling left. The
+// air between the tines is squeezed as they close and stretched as they open.
+//
+// The tines bend about their roots, so their tips move most and the bottoms
+// hardly at all. Air right next to a tine moves with the part of the tine
+// beside it; a little further out it has settled into the plane wave.
+// ---------------------------------------------------------------------------
+const TINE_ROOT_Y = 412;
+const TINE_HALF = 6.5; // half the thickness of a tine
+const FACE_R = FX + 19.5 + TINE_HALF; // outer face of the right tine
+const FACE_L = FX - 19.5 - TINE_HALF; // outer face of the left tine
+const INNER = 19.5 - TINE_HALF; // inner faces are this far either side of FX
+const SRC_L = 2 * FX - SRC_X; // where the left-going wave starts, mirroring SRC_X
+const delayLeft = (x) => Math.max(0, SRC_L - x) / WAVE_SPEED;
+const LEFT_X0 = 14; // the air on the left runs out to here
+
+// How far a tine moves at height y, compared with its tip
+const tineReach = (y) => Math.min(1.05, Math.max(0, (TINE_ROOT_Y - y) / 150));
+// Blend from moving with the tine (right next to it) to the plane wave
+const nearFactor = (y, dist) => {
+  const reach = tineReach(y);
+  return reach + (1 - reach) * smoothstep(dist / 55);
+};
+
+// The loudspeaker's particles, when the fork is the source instead
+AIR.forEach((p) => (p.forkF = nearFactor(p.y, p.x - FACE_R)));
+
+const FORK_TRACER_X = FACE_L - 92;
 const FORK_AIR = [];
 {
   const rand = seededRandom(13);
   for (let gy = BAND.y0 + 6; gy < BAND.y1 - 2; gy += 13) {
-    for (let gx = FORK_X0; gx < BAND.x0 - 2; gx += 11) {
-      const x = gx + (rand() - 0.5) * 8;
+    // Left of the fork, out to the edge
+    for (let gx = FACE_L - 8, col = 0; gx > LEFT_X0; gx -= 11, col++) {
+      const j = col === 0 ? 3 : 8; // keep the first column clear of the tine
+      const x = gx + (rand() - 0.5) * j;
       const y = gy + (rand() - 0.5) * 9;
       const r = 2.6 + rand() * 0.8;
-      FORK_AIR.push({ x, y, r });
+      if (Math.hypot(x - FORK_TRACER_X, y - MID_Y) < 9) continue;
+      FORK_AIR.push({ x, y, r, side: -1, delay: delayLeft(x), f: nearFactor(y, FACE_L - x) });
+    }
+    // The narrow gap between the right tine and the loudspeaker's particles
+    {
+      const x = FACE_R + 7 + (rand() - 0.5) * 3;
+      const y = gy + (rand() - 0.5) * 9;
+      const r = 2.6 + rand() * 0.6;
+      FORK_AIR.push({ x, y, r, side: 1, delay: delayAt(x), f: nearFactor(y, x - FACE_R) });
     }
   }
-  FORK_AIR.forEach((p) => (p.delay = delayAt(p.x)));
+  // Between the tines: a staggered double column, from the tips down to the bend
+  const top = BAND.y0 + 8;
+  const bottom = TINE_ROOT_Y + 2;
+  for (let y = top, k = 0; y < bottom; y += 7.5, k++) {
+    const x = FX + (k % 2 ? 4 : -4) + (rand() - 0.5) * 1.5;
+    const r = 2.6 + rand() * 0.5;
+    // the air between moves in proportion to how far it is from the middle
+    FORK_AIR.push({ x, y: y + (rand() - 0.5) * 2, r, side: 0, lin: (x - FX) / INNER });
+  }
+  FORK_AIR.forEach((p) => {
+    if (p.side === 0) p.f = tineReach(p.y);
+  });
+  FORK_AIR.push({
+    x: FORK_TRACER_X,
+    y: MID_Y,
+    r: 4.5,
+    side: -1,
+    tracer: true,
+    delay: delayLeft(FORK_TRACER_X),
+    f: 1,
+  });
 }
 
 const FORK_AIR_GROUPS = [
-  { color: C.metal, width: 5.5, pts: FORK_AIR.filter((p) => p.r < 2.9) },
-  { color: C.metal, width: 6.1, pts: FORK_AIR.filter((p) => p.r >= 2.9 && p.r < 3.2) },
-  { color: C.metal, width: 6.7, pts: FORK_AIR.filter((p) => p.r >= 3.2) },
+  { color: C.metal, width: 5.5, pts: FORK_AIR.filter((p) => !p.tracer && p.r < 2.9) },
+  { color: C.metal, width: 6.1, pts: FORK_AIR.filter((p) => !p.tracer && p.r >= 2.9 && p.r < 3.2) },
+  { color: C.metal, width: 6.7, pts: FORK_AIR.filter((p) => !p.tracer && p.r >= 3.2) },
+  { color: C.blue, width: 9, pts: FORK_AIR.filter((p) => p.tracer) },
 ];
+
+// Shading for the left-going wave
+const LEFT_SHADE_STOPS = Array.from({ length: 40 }, (_, k) => {
+  const x = LEFT_X0 + (k / 39) * (SRC_L - LEFT_X0);
+  return {
+    off: k / 39,
+    delay: delayLeft(x),
+    fade: smoothstep((x - LEFT_X0) / 40) * smoothstep((FACE_L - x) / 20),
+  };
+});
 
 const SHADE_STOPS = Array.from({ length: 130 }, (_, k) => {
   const x = BAND.x0 + (k / 129) * (BAND.x1 - BAND.x0);
@@ -160,6 +227,7 @@ export default function SoundWaves({ onBack, disableSound = false }) {
   const airRefs = useRef([]);
   const forkAirRefs = useRef([]);
   const stopRefs = useRef([]);
+  const leftStopRefs = useRef([]);
   const traceRef = useRef(null);
   const coneRef = useRef(null);
   const prongRefs = useRef([]);
@@ -318,22 +386,37 @@ export default function SoundWaves({ onBack, disableSound = false }) {
         for (let n = 0; n < grp.pts.length; n++) {
           const p = grp.pts[n];
           sample(t - p.delay);
-          const x = p.x + DISP * outAmp * Math.sin(outPhi);
+          // next to the fork, the air moves with the part of the tine beside it
+          const x = p.x + DISP * outAmp * Math.sin(outPhi) * (fork ? p.forkF : 1);
           d += "M" + x.toFixed(1) + " " + p.y.toFixed(1) + "h0";
         }
         airRefs.current[g].setAttribute("d", d);
       });
 
-      FORK_AIR_GROUPS.forEach((grp, g) => {
-        let d = "";
-        for (let n = 0; n < grp.pts.length; n++) {
-          const p = grp.pts[n];
-          sample(t - p.delay);
-          const x = p.x + DISP * outAmp * Math.sin(outPhi);
-          d += "M" + x.toFixed(1) + " " + p.y.toFixed(1) + "h0";
+      // The fork's own air: the left-going wave, and the air between the tines
+      if (fork && forkAirRefs.current[0] && leftStopRefs.current[0]) {
+        FORK_AIR_GROUPS.forEach((grp, g) => {
+          let d = "";
+          for (let n = 0; n < grp.pts.length; n++) {
+            const p = grp.pts[n];
+            let dx;
+            if (p.side === 0) {
+              dx = srcDisp * p.f * p.lin;
+            } else {
+              sample(t - p.delay);
+              dx = p.side * DISP * outAmp * Math.sin(outPhi) * p.f;
+            }
+            d += "M" + (p.x + dx).toFixed(1) + " " + p.y.toFixed(1) + "h0";
+          }
+          forkAirRefs.current[g].setAttribute("d", d);
+        });
+        for (let n = 0; n < LEFT_SHADE_STOPS.length; n++) {
+          const st = LEFT_SHADE_STOPS[n];
+          sample(t - st.delay);
+          const op = SHADE_MAX * st.fade * outAmp * (0.5 + 0.5 * Math.cos(outPhi));
+          leftStopRefs.current[n].setAttribute("stop-opacity", op.toFixed(3));
         }
-        if (forkAirRefs.current[g]) forkAirRefs.current[g].setAttribute("d", d);
-      });
+      }
 
       // --- Shading: darker where the air is squashed together ---
       for (let n = 0; n < SHADE_STOPS.length; n++) {
@@ -928,6 +1011,24 @@ export default function SoundWaves({ onBack, disableSound = false }) {
                     />
                   ))}
                 </linearGradient>
+                <linearGradient
+                  id="swShadeL"
+                  gradientUnits="userSpaceOnUse"
+                  x1={LEFT_X0}
+                  y1="0"
+                  x2={SRC_L}
+                  y2="0"
+                >
+                  {LEFT_SHADE_STOPS.map((st, k) => (
+                    <stop
+                      key={k}
+                      ref={(el) => (leftStopRefs.current[k] = el)}
+                      offset={st.off}
+                      stopColor="#2b3a4d"
+                      stopOpacity="0"
+                    />
+                  ))}
+                </linearGradient>
                 <linearGradient id="swMetal" x1="0" y1="0" x2="1" y2="0">
                   <stop offset="0%" stopColor="#7c858f" />
                   <stop offset="50%" stopColor="#e2e6ea" />
@@ -1074,21 +1175,38 @@ export default function SoundWaves({ onBack, disableSound = false }) {
                 />
               ))}
 
-              {/* Extra air around the tuning fork: close to, between and
-                  behind the tines. Hidden (but still animated) for the
-                  speaker, whose cone occupies this space instead. */}
-              <g style={{ ...markStyle, opacity: source === "fork" ? 1 : 0 }}>
-                {FORK_AIR_GROUPS.map((g, k) => (
-                  <path
-                    key={"fork" + k}
-                    ref={(el) => (forkAirRefs.current[k] = el)}
-                    fill="none"
-                    stroke={g.color}
-                    strokeWidth={g.width}
-                    strokeLinecap="round"
+              {/* The fork's own air: to its left, carrying the left-going wave,
+                  and between the tines. The loudspeaker's cabinet is here instead. */}
+              {source === "fork" && (
+                <g>
+                  <rect
+                    x={LEFT_X0}
+                    y={BAND.y0}
+                    width={FACE_L - LEFT_X0}
+                    height={BAND.y1 - BAND.y0}
+                    fill="url(#swShadeL)"
                   />
-                ))}
-              </g>
+                  <line
+                    x1={FORK_TRACER_X}
+                    y1={MID_Y - 13}
+                    x2={FORK_TRACER_X}
+                    y2={MID_Y + 13}
+                    stroke="#a7afb8"
+                    strokeWidth="1.5"
+                    strokeDasharray="3 3"
+                  />
+                  {FORK_AIR_GROUPS.map((g, k) => (
+                    <path
+                      key={"fork" + k}
+                      ref={(el) => (forkAirRefs.current[k] = el)}
+                      fill="none"
+                      stroke={g.color}
+                      strokeWidth={g.width}
+                      strokeLinecap="round"
+                    />
+                  ))}
+                </g>
+              )}
 
               {/* Compression and rarefaction, lined up with the graph */}
               <g
