@@ -1,4 +1,4 @@
-import { LessonNav, SiteFooter } from "./Branding.jsx";
+import { BrandLogo, LessonNav, SiteFooter } from "./Branding.jsx";
 import { useEffect, useRef, useState } from "react";
 
 const C = {
@@ -1293,7 +1293,8 @@ export default function SoundWaves({ onBack, disableSound = false }) {
         }
       `}</style>
 
-      <div className="shell">
+      <div className="shell has-brand">
+        {onBack && <BrandLogo className="page-logo" />}
         {onBack && <LessonNav onBack={onBack} />}
         <header className="heading">
           <h1>What Is a Sound Wave?</h1>

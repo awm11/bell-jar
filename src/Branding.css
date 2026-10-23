@@ -26,7 +26,14 @@
   gap: 20px;
 }
 
-/* (Lesson pages now use LessonNav instead of the pinned logo) */
+/* Lesson pages: favicon pinned top-right, LessonNav for sim home */
+.shell.has-brand { position: relative; }
+.shell.has-brand > .heading { padding-right: 76px; }
+.awm-logo-link.page-logo {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
 
 /* Lesson-page home bar: logo + "Sound" as a clickable strip above the lesson */
 .awm-lesson-nav {
@@ -107,6 +114,7 @@
 
 @media (max-width: 760px) {
   .awm-logo-link img { width: 44px; height: 44px; }
+  .shell.has-brand > .heading { padding-right: 60px; }
 }
 
 /* Full support row at the bottom of the landing page */
