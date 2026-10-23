@@ -313,11 +313,6 @@ export default function App() {
       </header>
 
       <main className="content">
-        <div className="sectionHeading">
-          <h2>Lessons</h2>
-          <p>Choose a simulation to open it.</p>
-        </div>
-
         <div className="cards">
           {LESSONS.map((l) => {
             const { Preview } = l;
