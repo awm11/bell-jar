@@ -1063,7 +1063,6 @@ export default function BellJar({ onBack, disableSound = false }) {
       <div className="shell">
         {onBack && <LessonNav onBack={onBack} />}
         <header className="heading">
-          <div className="eyebrow">Sound • 02</div>
           <h1>The Bell Jar Experiment</h1>
           <p className="intro">
             A buzzer hangs inside a glass bell jar. Its vibrations pass from

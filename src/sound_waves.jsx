@@ -1296,7 +1296,6 @@ export default function SoundWaves({ onBack, disableSound = false }) {
       <div className="shell">
         {onBack && <LessonNav onBack={onBack} />}
         <header className="heading">
-          <div className="eyebrow">Sound • 01</div>
           <h1>What Is a Sound Wave?</h1>
           <p className="intro">
             A vibrating object pushes and pulls on the air particles next to it.
