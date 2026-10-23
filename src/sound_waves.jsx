@@ -39,8 +39,8 @@ const H = 520;
 const SRC_X = 238; // front of the cone / face of the fork prong
 const BAND = { x0: 250, x1: 1120, y0: 252, y1: 440 };
 // The shading rect is inset so it centres on the particle rows
-const SHADE_PAD_TOP = 2;
-const SHADE_PAD_BOT = 8;
+const SHADE_PAD_TOP = 0;
+const SHADE_PAD_BOT = 6;
 const MID_Y = (BAND.y0 + BAND.y1) / 2;
 const GRAPH = { x: 60, y: 16, w: 1070, h: 190 };
 const G0 = GRAPH.y + GRAPH.h / 2 + 10; // zero line of the graph
