@@ -1,4 +1,4 @@
-import { SoundIcon, SiteFooter } from "./Branding.jsx";
+import { BrandLogo, SoundIcon, SiteFooter } from "./Branding.jsx";
 import { useEffect, useState } from "react";
 import SoundWaves, { SoundWavesPreview } from "./sound_waves.jsx";
 import BellJar, { BellJarPreview } from "./bell_jar.jsx";
@@ -304,6 +304,7 @@ export default function App() {
             <p>Interactive simulations of how sound is made and how it travels.</p>
           </div>
           <SoundIcon className="home-icon" />
+          <BrandLogo />
         </div>
       </header>
 
