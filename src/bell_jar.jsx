@@ -787,7 +787,7 @@ export default function BellJar({ onBack, disableSound = false }) {
         }
 
         .intro {
-          max-width: 780px;
+          max-width: 960px;
           margin: 8px 0 0;
           color: ${C.muted};
           line-height: 1.5;
