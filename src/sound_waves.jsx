@@ -72,6 +72,16 @@ const TRACER_X = [430, 650, 870];
 const AIR = [];
 {
   const rand = seededRandom(5);
+  // Extra particles near the cone face (SRC_X to BAND.x0)
+  for (let gy = BAND.y0 + 8; gy < BAND.y1 - 4; gy += 15) {
+    for (let gx = SRC_X + 2; gx < BAND.x0; gx += 10) {
+      const x = gx + (rand() - 0.5) * 6;
+      const y = gy + (rand() - 0.5) * 8;
+      const r = 2.5 + rand() * 0.7;
+      AIR.push({ x, y, r, tracer: false });
+    }
+  }
+  // Main particle grid
   for (let gy = BAND.y0 + 6; gy < BAND.y1 - 2; gy += 13) {
     for (let gx = BAND.x0 + 4; gx < BAND.x1; gx += 11) {
       const x = gx + (rand() - 0.5) * 8;
