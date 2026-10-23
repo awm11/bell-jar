@@ -51,11 +51,15 @@
   outline: 3px solid rgba(33, 102, 209, 0.3);
   outline-offset: 2px;
 }
-.awm-lesson-nav-icon {
+.awm-sound-icon {
   width: 28px;
   height: 28px;
   display: block;
   flex: none;
+}
+.awm-sound-icon.home-icon {
+  width: 52px;
+  height: 52px;
 }
 .awm-lesson-nav-label {
   font-size: 15px;
@@ -76,7 +80,7 @@
     gap: 8px;
     padding: 5px 12px 5px 5px;
   }
-  .awm-lesson-nav-icon { width: 24px; height: 24px; }
+  .awm-sound-icon { width: 24px; height: 24px; }
   .awm-lesson-nav-label { font-size: 14px; }
 }
 

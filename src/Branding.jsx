@@ -20,9 +20,9 @@ export function BrandLogo({ className = '' }) {
   )
 }
 
-function SoundIcon() {
+export function SoundIcon({ className = '' }) {
   return (
-    <svg className="awm-lesson-nav-icon" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+    <svg className={`awm-sound-icon ${className}`.trim()} viewBox="0 0 28 28" fill="none" aria-hidden="true">
       <rect width="28" height="28" rx="7" fill="#2166d1" />
       <path d="M9 11.5 L12 9 V19 L9 16.5 Z" fill="#fff" />
       <rect x="7" y="11.5" width="3" height="5" rx="0.5" fill="#fff" />
