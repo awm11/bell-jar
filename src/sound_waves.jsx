@@ -314,6 +314,7 @@ export default function SoundWaves({ onBack, disableSound = false }) {
   const leftStopRefs = useRef([]);
   const traceRef = useRef(null);
   const coneRef = useRef(null);
+  const coilRef = useRef(null);
   const prongRefs = useRef([]);
   const markRefs = useRef({});
 
@@ -535,7 +536,9 @@ export default function SoundWaves({ onBack, disableSound = false }) {
 
       const srcDisp = DISP * ampNow * Math.sin(phiNow);
       if (coneRef.current) {
-        coneRef.current.setAttribute("transform", "translate(" + srcDisp.toFixed(2) + " 0)");
+        const tx = "translate(" + srcDisp.toFixed(2) + " 0)";
+        coneRef.current.setAttribute("transform", tx);
+        if (coilRef.current) coilRef.current.setAttribute("transform", tx);
       }
       if (prongRefs.current[0]) {
         // the prongs bend in and out about their roots (outline and fill together)
@@ -1654,6 +1657,23 @@ export default function SoundWaves({ onBack, disableSound = false }) {
                       frame stay still; the cone, its rubber rim and the coil
                       move together, pushing on the air. */}
 
+                  {/* Coil — behind everything, moves with the cone */}
+                  <g ref={coilRef}>
+                    <rect x="158" y={MID_Y - 14} width="22" height="28" rx="2" fill="url(#swCoil)" stroke="#6e3a17" strokeWidth="1" />
+                    {[0, 1, 2, 3].map((k) => (
+                      <line
+                        key={k}
+                        x1={163 + k * 4.5}
+                        y1={MID_Y - 13}
+                        x2={163 + k * 4.5}
+                        y2={MID_Y + 13}
+                        stroke="#7a4219"
+                        strokeOpacity="0.45"
+                        strokeWidth="1"
+                      />
+                    ))}
+                  </g>
+
                   {/* Frame: struts from the magnet out to the rim */}
                   {[-1, 1].map((sgn) => (
                     <g key={sgn} strokeLinecap="round">
@@ -1706,20 +1726,6 @@ export default function SoundWaves({ onBack, disableSound = false }) {
                       strokeWidth="1.5"
                       strokeLinejoin="round"
                     />
-                    {/* Coil, where the cone meets the magnet — on top of the cone */}
-                    <rect x="158" y={MID_Y - 14} width="22" height="28" rx="2" fill="url(#swCoil)" stroke="#6e3a17" strokeWidth="1" />
-                    {[0, 1, 2, 3].map((k) => (
-                      <line
-                        key={k}
-                        x1={163 + k * 4.5}
-                        y1={MID_Y - 13}
-                        x2={163 + k * 4.5}
-                        y2={MID_Y + 13}
-                        stroke="#7a4219"
-                        strokeOpacity="0.45"
-                        strokeWidth="1"
-                      />
-                    ))}
                     {/* the cone's front edge */}
                     <line
                       x1={SRC_X - 3}
