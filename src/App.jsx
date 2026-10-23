@@ -134,6 +134,12 @@ export default function App() {
           letter-spacing: 0.12em;
         }
 
+        .titleRow {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+        }
+
         .simpleHeader h1 {
           margin: 0;
           color: #172033;
@@ -298,12 +304,10 @@ export default function App() {
 
       <header className="simpleHeader">
         <div className="simpleHeaderInner has-brand">
-          <div>
-            <div className="simpleEyebrow">PHYSICS • WAVES</div>
+          <div className="titleRow">
+            <SoundIcon className="home-icon" />
             <h1>Sound</h1>
-            <p>Interactive simulations of how sound is made and how it travels.</p>
           </div>
-          <SoundIcon className="home-icon" />
           <BrandLogo />
         </div>
       </header>
