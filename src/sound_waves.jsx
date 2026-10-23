@@ -1,4 +1,4 @@
-import { BrandLogo, SiteFooter } from "./Branding.jsx";
+import { LessonNav, SiteFooter } from "./Branding.jsx";
 import { useEffect, useRef, useState } from "react";
 
 const C = {
@@ -876,20 +876,6 @@ export default function SoundWaves({ onBack, disableSound = false }) {
           overflow: hidden;
         }
 
-        .backRow {
-          padding: 14px 18px 0;
-        }
-
-        .backButton {
-          border: 0;
-          background: transparent;
-          color: ${C.muted};
-          font-size: 14px;
-          font-weight: 600;
-          cursor: pointer;
-          padding: 4px 0;
-        }
-
         .stage {
           padding: 12px;
         }
@@ -985,8 +971,7 @@ export default function SoundWaves({ onBack, disableSound = false }) {
         }
 
         .seg:focus-visible,
-        .switchBtn:focus-visible,
-        .backButton:focus-visible {
+        .switchBtn:focus-visible {
           outline: 3px solid rgba(33, 102, 209, .3);
           outline-offset: 2px;
         }
@@ -1305,8 +1290,8 @@ export default function SoundWaves({ onBack, disableSound = false }) {
         }
       `}</style>
 
-      <div className={onBack ? "shell has-brand" : "shell"}>
-        {onBack && <BrandLogo className="page-logo" />}
+      <div className="shell">
+        {onBack && <LessonNav onBack={onBack} />}
         <header className="heading">
           <div className="eyebrow">Sound • 01</div>
           <h1>What Is a Sound Wave?</h1>
@@ -1320,14 +1305,6 @@ export default function SoundWaves({ onBack, disableSound = false }) {
         </header>
 
         <section className="card">
-          {onBack && (
-            <div className="backRow">
-              <button className="backButton" onClick={onBack}>
-                ← Back
-              </button>
-            </div>
-          )}
-
           <div className="stage">
             <div className="stageInner">
             <button
@@ -1971,7 +1948,6 @@ export function SoundWavesPreview() {
         }
 
         .soundWavesPreview .heading,
-        .soundWavesPreview .backRow,
         .soundWavesPreview .signalBar,
         .soundWavesPreview .sliderBar,
         .soundWavesPreview .controls,

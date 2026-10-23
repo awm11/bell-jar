@@ -26,13 +26,58 @@
   gap: 20px;
 }
 
-/* Lesson pages: logo pinned top-right of the page column, beside the heading */
-.shell.has-brand { position: relative; }
-.shell.has-brand > .heading { padding-right: 76px; }
-.awm-logo-link.page-logo {
-  position: absolute;
-  top: 0;
-  right: 0;
+/* (Lesson pages now use LessonNav instead of the pinned logo) */
+
+/* Lesson-page home bar: logo + "Sound" as a clickable strip above the lesson */
+.awm-lesson-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px 6px 6px;
+  margin-bottom: 10px;
+  border-radius: 28px;
+  background: #ffffff;
+  border: 1px solid #e4e7eb;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.awm-lesson-nav:hover {
+  border-color: #c8ced7;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.10);
+}
+.awm-lesson-nav:focus-visible {
+  outline: 3px solid rgba(33, 102, 209, 0.3);
+  outline-offset: 2px;
+}
+.awm-lesson-nav-logo {
+  width: 30px;
+  height: 30px;
+  display: block;
+  border-radius: 8px;
+}
+.awm-lesson-nav-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: #344054;
+  letter-spacing: -0.01em;
+}
+.awm-lesson-nav-chevron {
+  font-size: 17px;
+  font-weight: 600;
+  color: #98a2b3;
+  line-height: 1;
+  transform: scaleX(1);
+}
+
+@media (max-width: 760px) {
+  .awm-lesson-nav {
+    gap: 8px;
+    padding: 5px 12px 5px 5px;
+  }
+  .awm-lesson-nav-logo { width: 26px; height: 26px; }
+  .awm-lesson-nav-label { font-size: 14px; }
 }
 
 /* One line of small muted links at the bottom */
@@ -58,5 +103,4 @@
 
 @media (max-width: 760px) {
   .awm-logo-link img { width: 44px; height: 44px; }
-  .shell.has-brand > .heading { padding-right: 60px; }
 }

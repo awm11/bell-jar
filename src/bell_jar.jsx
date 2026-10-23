@@ -1,4 +1,4 @@
-import { BrandLogo, SiteFooter } from "./Branding.jsx";
+import { LessonNav, SiteFooter } from "./Branding.jsx";
 import { useEffect, useRef, useState } from "react";
 
 const C = {
@@ -802,19 +802,7 @@ export default function BellJar({ onBack, disableSound = false }) {
           overflow: hidden;
         }
 
-        .backRow {
-          padding: 14px 18px 0;
-        }
 
-        .backButton {
-          border: 0;
-          background: transparent;
-          color: ${C.muted};
-          font-size: 14px;
-          font-weight: 600;
-          cursor: pointer;
-          padding: 4px 0;
-        }
 
         .stage {
           padding: 12px;
@@ -861,8 +849,7 @@ export default function BellJar({ onBack, disableSound = false }) {
         }
 
         .seg:focus-visible,
-        .switchBtn:focus-visible,
-        .backButton:focus-visible {
+        .switchBtn:focus-visible {
           outline: 3px solid rgba(33, 102, 209, .3);
           outline-offset: 2px;
         }
@@ -1073,8 +1060,8 @@ export default function BellJar({ onBack, disableSound = false }) {
         }
       `}</style>
 
-      <div className={onBack ? "shell has-brand" : "shell"}>
-        {onBack && <BrandLogo className="page-logo" />}
+      <div className="shell">
+        {onBack && <LessonNav onBack={onBack} />}
         <header className="heading">
           <div className="eyebrow">Sound • 02</div>
           <h1>The Bell Jar Experiment</h1>
@@ -1087,14 +1074,6 @@ export default function BellJar({ onBack, disableSound = false }) {
         </header>
 
         <section className="card">
-          {onBack && (
-            <div className="backRow">
-              <button className="backButton" onClick={onBack}>
-                ← Back
-              </button>
-            </div>
-          )}
-
           <div className="stage">
             <svg
               viewBox={"0 0 " + W + " " + H}
@@ -1674,7 +1653,6 @@ export function BellJarPreview() {
         }
 
         .bellJarPreview .heading,
-        .bellJarPreview .backRow,
         .bellJarPreview .signalBar,
         .bellJarPreview .controls,
         .bellJarPreview .lesson {

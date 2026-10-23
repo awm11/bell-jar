@@ -20,6 +20,17 @@ export function BrandLogo({ className = '' }) {
   )
 }
 
+export function LessonNav({ onBack }) {
+  return (
+    <nav className="awm-lesson-nav" onClick={onBack} role="link" tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onBack(); } }}>
+      <img src={LOGO_SRC} alt="" className="awm-lesson-nav-logo" />
+      <span className="awm-lesson-nav-label">Sound</span>
+      <span className="awm-lesson-nav-chevron">‹</span>
+    </nav>
+  )
+}
+
 export function SiteFooter() {
   return (
     <footer className="awm-footer">
