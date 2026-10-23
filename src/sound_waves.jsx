@@ -420,6 +420,14 @@ export default function SoundWaves({ onBack, disableSound = false }) {
     }
     let histK = 0;
 
+    // Strikes: the amplitude jumps at an instant. Each is remembered as the
+    // first history sample after it, and the amplitude is never blended across
+    // one, so the front of the new wave stays sharp and travels without
+    // wobbling. (Blending would smear the jump over a few pixels, which the
+    // graph's fixed sample points would catch differently each frame.)
+    const cuts = [];
+    const cutTime = (c) => (c - 0.5) * HIST_DT;
+
     // Source's phase and amplitude at an earlier time tau
     let outPhi = 0;
     let outAmp = 0;
@@ -437,7 +445,12 @@ export default function SoundWaves({ onBack, disableSound = false }) {
       }
       const b = mod(k + 1, HIST_N);
       outPhi = phase[a] + (phase[b] - phase[a]) * f;
-      outAmp = amp[a] + (amp[b] - amp[a]) * f;
+      outAmp =
+        cuts.length && cuts.includes(k + 1)
+          ? f < 0.5
+            ? amp[a]
+            : amp[b]
+          : amp[a] + (amp[b] - amp[a]) * f;
     };
 
     const setMark = (key, attrs) => {
@@ -493,6 +506,8 @@ export default function SoundWaves({ onBack, disableSound = false }) {
         ampNow = a1;
         prevAmp = a1;
         struck = a1 > 0;
+        cuts.push(histK + 1); // every sample from here on is after the strike
+        while (cuts.length && cuts[0] < histK - HIST_N) cuts.shift();
       } else {
         // follow the dampening closely, so the tines stop as quickly as the sound
         const rate = fork && damp !== null ? real / 0.02 : dt / 0.12;
@@ -583,7 +598,23 @@ export default function SoundWaves({ onBack, disableSound = false }) {
       const ys = new Array(GRAPH_X.length);
       const amps = new Array(GRAPH_X.length);
       let pts = "";
+      // where each strike's front has got to, so it can be drawn exactly there
+      const fronts = [];
+      for (let c = cuts.length - 1; c >= 0; c--) {
+        const xf = SRC_X + (t - cutTime(cuts[c])) * WAVE_SPEED;
+        if (xf > GRAPH_X[0] && xf < GRAPH_X[GRAPH_X.length - 1]) fronts.push(xf);
+      }
+      let nf = 0;
       for (let n = 0; n < GRAPH_X.length; n++) {
+        while (nf < fronts.length && fronts[nf] <= GRAPH_X[n]) {
+          // the front: a step straight from the old wave to the new one
+          const xf = fronts[nf++];
+          const tf = t - delayAt(xf);
+          for (const e of [0.001, -0.001]) {
+            sample(tf + e);
+            pts += xf.toFixed(1) + "," + (G0 - outAmp * Math.cos(outPhi) * GA).toFixed(1) + " ";
+          }
+        }
         sample(t - delayAt(GRAPH_X[n]));
         const v = outAmp * Math.cos(outPhi);
         ys[n] = v;
