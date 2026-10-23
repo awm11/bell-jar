@@ -38,6 +38,9 @@ const W = 1150;
 const H = 520;
 const SRC_X = 238; // front of the cone / face of the fork prong
 const BAND = { x0: 250, x1: 1120, y0: 252, y1: 440 };
+// The shading rect is inset so it centres on the particle rows
+const SHADE_PAD_TOP = 2;
+const SHADE_PAD_BOT = 8;
 const MID_Y = (BAND.y0 + BAND.y1) / 2;
 const GRAPH = { x: 60, y: 16, w: 1070, h: 190 };
 const G0 = GRAPH.y + GRAPH.h / 2 + 10; // zero line of the graph
@@ -1553,9 +1556,9 @@ export default function SoundWaves({ onBack, disableSound = false }) {
               {/* Air */}
               <rect
                 x={BAND.x0}
-                y={BAND.y0}
+                y={BAND.y0 + SHADE_PAD_TOP}
                 width={BAND.x1 - BAND.x0}
-                height={BAND.y1 - BAND.y0}
+                height={BAND.y1 - BAND.y0 - SHADE_PAD_TOP - SHADE_PAD_BOT}
                 fill="url(#swShade)"
               />
 
@@ -1589,9 +1592,9 @@ export default function SoundWaves({ onBack, disableSound = false }) {
                 <g>
                   <rect
                     x={LEFT_X0}
-                    y={BAND.y0}
+                    y={BAND.y0 + SHADE_PAD_TOP}
                     width={FACE_L - LEFT_X0}
-                    height={BAND.y1 - BAND.y0}
+                    height={BAND.y1 - BAND.y0 - SHADE_PAD_TOP - SHADE_PAD_BOT}
                     fill="url(#swShadeL)"
                   />
                   <line
