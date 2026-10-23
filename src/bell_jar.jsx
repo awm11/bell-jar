@@ -307,7 +307,7 @@ const GLASS = [];
       if (th < -1e-6) continue;
       const x = X0 + r * Math.cos(th);
       const y = DOME_Y - r * Math.sin(th);
-      if (Math.abs(x - X0) < bungHalfWidth(y) + 2) continue;
+      if (Math.abs(x - X0) < bungHalfWidth(y) - 3) continue;
       add(x, y, Math.cos(th), -Math.sin(th), depth);
     }
   }
@@ -1149,9 +1149,9 @@ export default function BellJar({ onBack, disableSound = false }) {
                 </linearGradient>
 
                 <linearGradient id="bjPumpBody" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#b9c0c8" />
-                  <stop offset="50%" stopColor="#e5e7eb" />
-                  <stop offset="100%" stopColor="#a3abb4" />
+                  <stop offset="0%" stopColor="#1a6b7a" />
+                  <stop offset="50%" stopColor="#2ea8be" />
+                  <stop offset="100%" stopColor="#176070" />
                 </linearGradient>
               </defs>
 

@@ -1715,21 +1715,7 @@ export default function SoundWaves({ onBack, disableSound = false }) {
                   <rect x="151" y={MID_Y - 48} width="11" height="96" rx="3" fill="url(#swPlate)" stroke="#6b747e" strokeWidth="1" />
 
                   <g ref={coneRef}>
-                    {/* Coil, where the cone meets the magnet */}
-                    <rect x="158" y={MID_Y - 14} width="22" height="28" rx="2" fill="url(#swCoil)" stroke="#6e3a17" strokeWidth="1" />
-                    {[0, 1, 2, 3].map((k) => (
-                      <line
-                        key={k}
-                        x1={163 + k * 4.5}
-                        y1={MID_Y - 13}
-                        x2={163 + k * 4.5}
-                        y2={MID_Y + 13}
-                        stroke="#7a4219"
-                        strokeOpacity="0.45"
-                        strokeWidth="1"
-                      />
-                    ))}
-                    {/* Paper cone, flaring out to the rim */}
+                    {/* Paper cone, flaring out to the rim — drawn first so the coil sits on top */}
                     <path
                       d={
                         "M178," + (MID_Y - 16) +
@@ -1743,6 +1729,20 @@ export default function SoundWaves({ onBack, disableSound = false }) {
                       strokeWidth="1.5"
                       strokeLinejoin="round"
                     />
+                    {/* Coil, where the cone meets the magnet — on top of the cone */}
+                    <rect x="158" y={MID_Y - 14} width="22" height="28" rx="2" fill="url(#swCoil)" stroke="#6e3a17" strokeWidth="1" />
+                    {[0, 1, 2, 3].map((k) => (
+                      <line
+                        key={k}
+                        x1={163 + k * 4.5}
+                        y1={MID_Y - 13}
+                        x2={163 + k * 4.5}
+                        y2={MID_Y + 13}
+                        stroke="#7a4219"
+                        strokeOpacity="0.45"
+                        strokeWidth="1"
+                      />
+                    ))}
                     {/* the cone's front edge */}
                     <line
                       x1={SRC_X - 3}
