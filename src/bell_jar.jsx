@@ -30,7 +30,7 @@ const BUZZER_PULSE = 0.07;
 const SHADE_MAX = 0.2;
 const SLOW_FACTOR = 0.2;
 const PUMP_TAU = 2.5; // seconds for the air left in the jar to fall by a factor of e
-const VENT_TAU = 1.1;
+const VENT_TAU = 2.0;
 const ATM = 101; // kPa
 
 const MASTER_VOLUME = 0.12;
@@ -211,7 +211,7 @@ const AIR = [];
 // ---------------------------------------------------------------------------
 const OUTLET = { x: OUTLET_X, y: FOOT - 3 };
 const PIPE_END = PUMP.x1 - 6;
-const LEAVE_SPEED = 260; // px per second along the route
+const LEAVE_SPEED = 170; // px per second along the route
 
 const INSIDE = AIR.filter((p) => p.inside);
 INSIDE.forEach((p, i) => {
@@ -552,7 +552,12 @@ export default function BellJar({ onBack, disableSound = false }) {
 
       const on = onRef.current ? 1 : 0;
       onEnv += (on - onEnv) * Math.min(1, dt / 0.15);
-      env += (on * air - env) * Math.min(1, dt / 0.2);
+      // Sound drops quickly when air is pumped out, but restores
+      // gradually when air is let back in (pressure must build before
+      // sound can travel effectively through the jar)
+      const target = on * air;
+      const envTau = target > env ? 1.8 : 0.2;
+      env += (target - env) * Math.min(1, dt / envTau);
 
       const k = Math.floor(t / HIST_DT);
       for (let j = histK + 1; j <= k; j++) hist[mod(j, HIST_N)] = env;
