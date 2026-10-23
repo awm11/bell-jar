@@ -1,4 +1,4 @@
-import { BrandLogo, SoundIcon, SiteFooter } from "./Branding.jsx";
+import { BrandLogo, SoundIcon, SupportLinks } from "./Branding.jsx";
 import { useEffect, useState } from "react";
 import SoundWaves, { SoundWavesPreview } from "./sound_waves.jsx";
 import BellJar, { BellJarPreview } from "./bell_jar.jsx";
@@ -346,7 +346,7 @@ export default function App() {
             );
           })}
         </div>
-        <SiteFooter />
+        <SupportLinks className="landing-support" />
       </main>
     </div>
   );

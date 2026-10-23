@@ -108,3 +108,68 @@
 @media (max-width: 760px) {
   .awm-logo-link img { width: 44px; height: 44px; }
 }
+
+/* Full support row at the bottom of the landing page */
+.awm-support {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+}
+.awm-support.landing-support {
+  margin-top: 34px;
+  padding-top: 18px;
+  border-top: 1px solid #e4e7eb;
+}
+.awm-more-sims {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: #172033;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.awm-more-sims:hover,
+.awm-more-sims:focus-visible { color: #2563eb; }
+.awm-more-sims img {
+  width: 32px;
+  height: 32px;
+  display: block;
+  transition: transform 0.2s ease;
+}
+.awm-more-sims:hover img,
+.awm-more-sims:focus-visible img { transform: rotate(8deg); }
+.awm-contact {
+  color: #667085;
+  font-size: 13px;
+  text-decoration: none;
+}
+.awm-contact:hover,
+.awm-contact:focus-visible {
+  color: #172033;
+  text-decoration: underline;
+}
+/* Classes used by BuyMeCoffee.jsx: the embedded button is drawn at 250 x 60,
+   so it is shown at 70% inside a frame of the reduced size. */
+.coffee-embed-frame {
+  flex: none;
+  display: inline-block;
+  width: 175px;
+  height: 42px;
+  line-height: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  transition: transform 0.2s ease;
+}
+.coffee-embed-frame:hover,
+.coffee-embed-frame:focus-within { transform: scale(1.06); }
+.coffee-embed {
+  width: 250px;
+  height: 60px;
+  border: 0;
+  overflow: hidden;
+  transform: scale(0.7);
+  transform-origin: 0 0;
+}
