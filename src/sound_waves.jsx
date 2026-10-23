@@ -1389,6 +1389,32 @@ export default function SoundWaves({ onBack, disableSound = false }) {
                     />
                   ))}
                 </linearGradient>
+                {/* Loudspeaker: shading across each part's height makes it look round */}
+                <linearGradient id="swMagnet" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor="#2a2f35" />
+                  <stop offset="0.3" stopColor="#5f6872" />
+                  <stop offset="0.55" stopColor="#434a52" />
+                  <stop offset="1" stopColor="#1f2327" />
+                </linearGradient>
+                <linearGradient id="swPlate" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor="#959ea8" />
+                  <stop offset="0.35" stopColor="#eef1f4" />
+                  <stop offset="0.7" stopColor="#b9c0c8" />
+                  <stop offset="1" stopColor="#848d97" />
+                </linearGradient>
+                <linearGradient id="swCoil" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor="#8a4b1f" />
+                  <stop offset="0.4" stopColor="#e3a76c" />
+                  <stop offset="0.7" stopColor="#bb763b" />
+                  <stop offset="1" stopColor="#7a3f17" />
+                </linearGradient>
+                <linearGradient id="swCone" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor="#1e2226" />
+                  <stop offset="0.28" stopColor="#4b525a" />
+                  <stop offset="0.45" stopColor="#5e656e" />
+                  <stop offset="0.7" stopColor="#3b4148" />
+                  <stop offset="1" stopColor="#1b1e22" />
+                </linearGradient>
                 <linearGradient id="swMetal" x1="0" y1="0" x2="1" y2="0">
                   <stop offset="0%" stopColor="#7c858f" />
                   <stop offset="50%" stopColor="#e2e6ea" />
@@ -1647,40 +1673,101 @@ export default function SoundWaves({ onBack, disableSound = false }) {
               {/* Source */}
               {source === "speaker" ? (
                 <g>
-                  <rect
-                    x="150"
-                    y={MID_Y - 34}
-                    width="26"
-                    height="68"
-                    rx="4"
-                    fill="url(#swMetal)"
-                    stroke={C.metalDark}
-                    strokeWidth="2"
-                  />
+                  {/* A loudspeaker seen from the side. The magnet and the metal
+                      frame stay still; the cone, its rubber rim and the coil
+                      move together, pushing on the air. */}
+
+                  {/* Frame: struts from the magnet out to the rim */}
+                  {[-1, 1].map((sgn) => (
+                    <g key={sgn} strokeLinecap="round">
+                      <path
+                        d={
+                          "M160," + (MID_Y + sgn * 44) +
+                          " L" + (SRC_X - 7) + "," + (MID_Y + sgn * (MID_Y - BAND.y0 + 2))
+                        }
+                        stroke="#7d8690"
+                        strokeWidth="6"
+                      />
+                      <path
+                        d={
+                          "M160," + (MID_Y + sgn * 44) +
+                          " L" + (SRC_X - 7) + "," + (MID_Y + sgn * (MID_Y - BAND.y0 + 2))
+                        }
+                        stroke="#c3cad2"
+                        strokeWidth="2"
+                      />
+                      <rect
+                        x={SRC_X - 11}
+                        y={sgn < 0 ? BAND.y0 - 4 : BAND.y1 - 16}
+                        width="7"
+                        height="20"
+                        rx="2"
+                        fill="url(#swPlate)"
+                        stroke="#6b747e"
+                        strokeWidth="1"
+                      />
+                    </g>
+                  ))}
+
+                  {/* Magnet, between its back plate and front plate */}
+                  <rect x="104" y={MID_Y - 33} width="12" height="66" rx="3" fill="url(#swPlate)" stroke="#6b747e" strokeWidth="1" />
+                  <rect x="112" y={MID_Y - 40} width="42" height="80" rx="8" fill="url(#swMagnet)" stroke="#1d2126" strokeWidth="1.5" />
+                  <rect x="151" y={MID_Y - 48} width="11" height="96" rx="3" fill="url(#swPlate)" stroke="#6b747e" strokeWidth="1" />
+
                   <g ref={coneRef}>
-                    <polygon
-                      points={
-                        "176," + (MID_Y - 18) + " " +
-                        SRC_X + "," + (BAND.y0 + 6) + " " +
-                        SRC_X + "," + (BAND.y1 - 6) + " " +
-                        "176," + (MID_Y + 18)
+                    {/* Coil, where the cone meets the magnet */}
+                    <rect x="158" y={MID_Y - 14} width="22" height="28" rx="2" fill="url(#swCoil)" stroke="#6e3a17" strokeWidth="1" />
+                    {[0, 1, 2, 3].map((k) => (
+                      <line
+                        key={k}
+                        x1={163 + k * 4.5}
+                        y1={MID_Y - 13}
+                        x2={163 + k * 4.5}
+                        y2={MID_Y + 13}
+                        stroke="#7a4219"
+                        strokeOpacity="0.45"
+                        strokeWidth="1"
+                      />
+                    ))}
+                    {/* Paper cone, flaring out to the rim */}
+                    <path
+                      d={
+                        "M178," + (MID_Y - 16) +
+                        " Q216," + (MID_Y - 36) + " " + (SRC_X - 3) + "," + (BAND.y0 + 8) +
+                        " L" + (SRC_X - 3) + "," + (BAND.y1 - 8) +
+                        " Q216," + (MID_Y + 36) + " 178," + (MID_Y + 16) +
+                        " Z"
                       }
-                      fill="#e5e7eb"
-                      stroke={C.metalDark}
-                      strokeWidth="2"
+                      fill="url(#swCone)"
+                      stroke="#15181c"
+                      strokeWidth="1.5"
                       strokeLinejoin="round"
                     />
+                    {/* the cone's front edge */}
                     <line
-                      x1={SRC_X}
-                      y1={BAND.y0 + 6}
-                      x2={SRC_X}
-                      y2={BAND.y1 - 6}
-                      stroke={C.metalDark}
-                      strokeWidth="4"
+                      x1={SRC_X - 3}
+                      y1={BAND.y0 + 9}
+                      x2={SRC_X - 3}
+                      y2={BAND.y1 - 9}
+                      stroke="#7b838c"
+                      strokeWidth="2.5"
                       strokeLinecap="round"
                     />
+                    {/* Rubber surround, rolled over at the rim */}
+                    {[BAND.y0 + 7, BAND.y1 - 7].map((cy) => (
+                      <g key={cy}>
+                        <circle cx={SRC_X - 4} cy={cy} r="5.5" fill="#2a2e33" />
+                        <path
+                          d={"M" + (SRC_X - 7) + "," + (cy - 3.5) + " A4,4 0 0 1 " + (SRC_X - 1) + "," + (cy - 2)}
+                          fill="none"
+                          stroke="#6b737c"
+                          strokeWidth="1.3"
+                          strokeLinecap="round"
+                        />
+                      </g>
+                    ))}
                   </g>
-                  <text x="190" y={BAND.y1 + 50} fontSize="18" fill={C.ink} textAnchor="middle">
+                  <text x="172" y={BAND.y1 + 50} fontSize="18" fill={C.ink} textAnchor="middle">
                     Loudspeaker
                   </text>
                 </g>
